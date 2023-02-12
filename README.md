@@ -1,3 +1,3 @@
-[![](https://jitci.com/gh/MC-Replay/Extensions/svg)](https://jitci.com/gh/MC-Replay/Extensions)
+[![](https://jitpack.io/v/MC-Replay/Extensions.svg)](https://jitpack.io/#MC-Replay/Extensions)
 
 # Extensions
