@@ -1,0 +1,3 @@
+main: mc.replay.extensions.Test
+name: kaas
+version: "1.100000"
