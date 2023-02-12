@@ -6,29 +6,25 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
+import java.lang.reflect.Constructor;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.Map;
 import java.util.jar.JarFile;
 
-public class ExtensionLoaderUtils {
+final class ExtensionLoaderUtils {
 
-    public static URLClassLoader getURLClassLoader(File file) {
-        try {
-            return new URLClassLoader(new URL[]{file.toURI().toURL()}, ExtensionLoaderUtils.class.getClassLoader());
-        } catch (MalformedURLException exception) {
-            exception.printStackTrace();
-            return null;
-        }
+    private ExtensionLoaderUtils() {
     }
 
-    public static JarFile getJarFile(File file) {
+    public static JarFile createJarFile(File file) throws IOException {
+        // Enable multi-release jars for Java 9+
         try {
+            final java.lang.reflect.Method runtimeVersionMethod = JarFile.class.getMethod("runtimeVersion");
+            final Object runtimeVersion = runtimeVersionMethod.invoke(null);
+            @SuppressWarnings("JavaReflectionMemberAccess") final Constructor<JarFile> constructor = JarFile.class.getConstructor(File.class, boolean.class, int.class, runtimeVersion.getClass());
+            return constructor.newInstance(file, true, java.util.zip.ZipFile.OPEN_READ, runtimeVersion);
+        } catch (Exception ignored) {
             return new JarFile(file);
-        } catch (IOException exception) {
-            exception.printStackTrace();
-            return null;
         }
     }
 
@@ -40,18 +36,6 @@ public class ExtensionLoaderUtils {
         try (InputStream inputStream = new FileInputStream(resource.getFile())) {
             Map<String, Object> data = yaml.load(inputStream);
             return new ExtensionConfig(data);
-        } catch (Exception exception) {
-            exception.printStackTrace();
-            return null;
-        }
-    }
-
-    public static JavaExtension getExtensionFromJarEntry(ClassLoader classLoader, ExtensionConfig config) {
-        try {
-            Class<?> clazz = Class.forName(config.getMain(), false, classLoader);
-            Class<? extends JavaExtension> javaExtension = clazz.asSubclass(JavaExtension.class);
-
-            return javaExtension.getConstructor().newInstance();
         } catch (Exception exception) {
             exception.printStackTrace();
             return null;

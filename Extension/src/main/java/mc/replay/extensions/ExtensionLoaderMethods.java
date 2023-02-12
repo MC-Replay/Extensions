@@ -1,7 +1,8 @@
 package mc.replay.extensions;
 
+import org.jetbrains.annotations.NotNull;
+
 public interface ExtensionLoaderMethods {
 
-    JavaExtension getExtensionByName(String string);
-
+    <T extends JavaExtension> T getExtensionByName(@NotNull String string);
 }

@@ -20,15 +20,15 @@ public abstract class JavaExtension {
         this.mainFolder = mainFolder;
     }
 
-    void onLoad() {
+    protected void onLoad() {
 
     }
 
-    void onEnable() {
+    protected void onEnable() {
 
     }
 
-    void onDisable() {
+    protected void onDisable() {
 
     }
 
