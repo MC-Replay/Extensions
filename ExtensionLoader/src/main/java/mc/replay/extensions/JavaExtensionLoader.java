@@ -1,14 +1,12 @@
 package mc.replay.extensions;
 
+import mc.replay.extensions.exception.ExtensionNotLoadedException;
+import mc.replay.extensions.exception.InvalidExtensionException;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URLClassLoader;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -32,17 +30,47 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
 
         this.folder = folder;
         this.extensions = this.loadAllExtensions();
+    }
 
-        for (JavaExtension extension : extensions.values()) {
-            extension.onLoad();
-        }
-
-        for (JavaExtension extension : extensions.values()) {
-            extension.onEnable();
+    public void loadExtensions() {
+        for (JavaExtension extension : new TreeSet<>(this.extensions.values())) {
+            try {
+                extension.onLoad();
+            } catch (Exception exception) {
+                System.err.println("Error while loading extension " + extension.getConfig().getName() + ":");
+                exception.printStackTrace();
+            }
         }
     }
 
-    public HashMap<String, JavaExtension> loadAllExtensions() {
+    public void enableExtensions() {
+        for (JavaExtension extension : new TreeSet<>(this.extensions.values())) {
+            if (!extension.isLoaded()) {
+                throw new ExtensionNotLoadedException("Extension " + extension.getConfig().getName() + " is not loaded.");
+            }
+
+            try {
+                extension.onEnable();
+            } catch (Exception exception) {
+                System.err.println("Error while enabling extension " + extension.getConfig().getName() + ":");
+                exception.printStackTrace();
+            }
+        }
+    }
+
+    public void disableExtensions() {
+        for (JavaExtension extension : new TreeSet<>(this.extensions.values())) {
+
+            try {
+                extension.onDisable();
+            } catch (Exception exception) {
+                System.err.println("Error while disabling extension " + extension.getConfig().getName() + ":");
+                exception.printStackTrace();
+            }
+        }
+    }
+
+    private HashMap<String, JavaExtension> loadAllExtensions() {
         HashMap<String, JavaExtension> extensions = new HashMap<>();
 
         File[] listFiles = this.folder.listFiles();

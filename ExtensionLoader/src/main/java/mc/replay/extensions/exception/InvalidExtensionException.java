@@ -1,4 +1,4 @@
-package mc.replay.extensions;
+package mc.replay.extensions.exception;
 
 import java.io.Serial;
 

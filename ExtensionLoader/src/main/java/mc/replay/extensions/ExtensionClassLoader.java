@@ -1,5 +1,6 @@
 package mc.replay.extensions;
 
+import mc.replay.extensions.exception.InvalidExtensionException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,7 +29,7 @@ public final class ExtensionClassLoader extends URLClassLoader {
     private final JarFile jarFile;
     private final Manifest manifest;
 
-    private JavaExtension extension;
+    private final JavaExtension extension;
 
     public ExtensionClassLoader(@NotNull JavaExtensionLoader loader, @NotNull ExtensionConfig config, @NotNull File file, @Nullable ClassLoader parent) throws IOException, InvalidExtensionException {
         super(file.getName(), new URL[]{file.toURI().toURL()}, parent);
