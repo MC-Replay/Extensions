@@ -70,6 +70,17 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
         }
     }
 
+    @Override
+    public Collection<JavaExtension> getExtensions() {
+        return this.extensions.values();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public JavaExtension getExtensionByName(@NotNull String name) {
+        return this.extensions.get(name);
+    }
+
     private HashMap<String, JavaExtension> loadAllExtensions() {
         HashMap<String, JavaExtension> extensions = new HashMap<>();
 
@@ -95,12 +106,6 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
         }
 
         return extensions;
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public JavaExtension getExtensionByName(@NotNull String name) {
-        return this.extensions.get(name);
     }
 
     public JavaExtension loadExtensionFromFile(File file) throws IOException, InvalidExtensionException {
