@@ -33,39 +33,38 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
     }
 
     public void loadExtensions() {
-        for (JavaExtension extension : new TreeSet<>(this.extensions.values())) {
+        for (ExtensionClassLoader loader : this.loaders) {
             try {
-                extension.onLoad();
-                extension.setIsLoaded(true);
+                loader.getExtension().onLoad();
+                loader.getExtension().setIsLoaded(true);
             } catch (Exception exception) {
-                System.err.println("Error while loading extension " + extension.getConfig().getName() + ":");
+                System.err.println("Error while loading extension " + loader.getExtension().getConfig().getName() + ":");
                 exception.printStackTrace();
             }
         }
     }
 
     public void enableExtensions() {
-        for (JavaExtension extension : new TreeSet<>(this.extensions.values())) {
-            if (!extension.isLoaded()) {
-                throw new ExtensionNotLoadedException("Extension " + extension.getConfig().getName() + " is not loaded.");
+        for (ExtensionClassLoader loader : this.loaders) {
+            if (!loader.getExtension().isLoaded()) {
+                throw new ExtensionNotLoadedException("Extension " + loader.getExtension().getConfig().getName() + " is not loaded.");
             }
 
             try {
-                extension.onEnable();
+                loader.getExtension().onEnable();
             } catch (Exception exception) {
-                System.err.println("Error while enabling extension " + extension.getConfig().getName() + ":");
+                System.err.println("Error while enabling extension " + loader.getExtension().getConfig().getName() + ":");
                 exception.printStackTrace();
             }
         }
     }
 
     public void disableExtensions() {
-        for (JavaExtension extension : new TreeSet<>(this.extensions.values())) {
-
+        for (ExtensionClassLoader loader : this.loaders) {
             try {
-                extension.onDisable();
+                loader.getExtension().onDisable();
             } catch (Exception exception) {
-                System.err.println("Error while disabling extension " + extension.getConfig().getName() + ":");
+                System.err.println("Error while disabling extension " + loader.getExtension().getConfig().getName() + ":");
                 exception.printStackTrace();
             }
         }

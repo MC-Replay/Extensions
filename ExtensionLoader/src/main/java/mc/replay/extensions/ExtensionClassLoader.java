@@ -61,10 +61,10 @@ public final class ExtensionClassLoader extends URLClassLoader {
                     extension.setConfig(config);
                     this.extension = extension;
 
-                    this.extension.onLoad();
-                    this.extension.setIsLoaded(true);
-
-                    this.extension.onEnable();
+//                    this.extension.onLoad();
+//                    this.extension.setIsLoaded(true);
+//
+//                    this.extension.onEnable();
                 }
             } catch (Exception exception) {
                 throw new InvalidExtensionException("", exception);
