@@ -1,6 +1,5 @@
 package mc.replay.extensions;
 
-import com.google.common.base.Preconditions;
 import mc.replay.extensions.exception.ExtensionNotLoadedException;
 import mc.replay.extensions.exception.InvalidExtensionException;
 import org.jetbrains.annotations.NotNull;
@@ -115,9 +114,9 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
         ExtensionConfig config = ExtensionLoaderUtils.getConfig(classLoader, "extension.yml");
         if (config == null) return null;
 
-        Preconditions.checkNotNull(config.getMain(), "Extension main cannot be null (%s)".formatted(file.getName()));
-        Preconditions.checkNotNull(config.getName(), "Extension name cannot be null (%s)".formatted(file.getName()));
-        Preconditions.checkNotNull(config.getVersion(), "Extension version cannot be null (%s)".formatted(file.getName()));
+        checkNotNull(config.getMain(), "Extension main cannot be null (%s)".formatted(file.getName()));
+        checkNotNull(config.getName(), "Extension name cannot be null (%s)".formatted(file.getName()));
+        checkNotNull(config.getVersion(), "Extension version cannot be null (%s)".formatted(file.getName()));
 
         try (ExtensionClassLoader extensionClassLoader = new ExtensionClassLoader(this, config, file, classLoader)) {
             JavaExtension extension = extensionClassLoader.getExtension();
@@ -180,5 +179,15 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
         }
 
         return null;
+    }
+
+    private void checkNotNull(Object reference, Object errorMessage) {
+        if (reference == null) {
+            if (errorMessage != null) {
+                throw new NullPointerException(String.valueOf(errorMessage));
+            } else {
+                throw new NullPointerException();
+            }
+        }
     }
 }
