@@ -37,6 +37,7 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
         for (JavaExtension extension : new TreeSet<>(this.extensions.values())) {
             try {
                 extension.onLoad();
+                extension.setIsLoaded(true);
             } catch (Exception exception) {
                 System.err.println("Error while loading extension " + extension.getConfig().getName() + ":");
                 exception.printStackTrace();
