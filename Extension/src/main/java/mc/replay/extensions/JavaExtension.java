@@ -3,6 +3,7 @@ package mc.replay.extensions;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.Collection;
 
 public abstract class JavaExtension implements Comparable<JavaExtension> {
 
@@ -51,20 +52,29 @@ public abstract class JavaExtension implements Comparable<JavaExtension> {
         return this.mainFolder;
     }
 
+    public Collection<JavaExtension> getExtensions() {
+        return this.extensionLoaderMethods.getExtensions();
+    }
+
     public JavaExtension getExtensionByName(String name) {
         return this.extensionLoaderMethods.getExtensionByName(name);
     }
 
+    @SuppressWarnings("ResultOfMethodCallIgnored")
     public File getDirectory() {
-        File extensionFolder = new File(this.mainFolder.toPath() + "/" + this.config.getName().replaceAll(" ", "-") + "/");
-        if (!extensionFolder.exists()) extensionFolder.mkdirs();
-        return extensionFolder;
+        File folder = new File(this.mainFolder, this.config.getName().replaceAll(" ", "-"));
+
+        if (!folder.isDirectory() || !folder.exists()) {
+            folder.mkdirs();
+        }
+
+        return folder;
     }
 
     @Override
     public int compareTo(@NotNull JavaExtension o) {
         for (String dependency : this.config.getDepends()) {
-            if (dependency.equalsIgnoreCase(this.config.getName())) continue;
+            if (dependency.equalsIgnoreCase(this.config.getName())) return 0;
 
             if (o.getConfig().getName().equalsIgnoreCase(dependency) || dependency.equalsIgnoreCase("all")) {
                 return 1;
