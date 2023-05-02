@@ -29,11 +29,8 @@ final class ExtensionLoaderUtils {
     }
 
     public static ExtensionConfig getConfig(ClassLoader classLoader, String ymlFile) {
-        URL resource = classLoader.getResource(ymlFile);
-        if (resource == null) return null;
-
         Yaml yaml = new Yaml();
-        try (InputStream inputStream = new FileInputStream(resource.getFile())) {
+        try (InputStream inputStream = classLoader.getResourceAsStream(ymlFile)) {
             Map<String, Object> data = yaml.load(inputStream);
             return new ExtensionConfig(data);
         } catch (Exception exception) {
