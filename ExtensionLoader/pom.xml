@@ -6,7 +6,7 @@
     <parent>
         <artifactId>Extensions</artifactId>
         <groupId>mc.replay.extensions</groupId>
-        <version>1.1.3</version>
+        <version>1.1.4</version>
     </parent>
 
     <artifactId>ExtensionLoader</artifactId>
@@ -15,7 +15,7 @@
         <dependency>
             <groupId>mc.replay.extensions</groupId>
             <artifactId>Extension</artifactId>
-            <version>1.1.3</version>
+            <version>1.1.4</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.yaml/snakeyaml -->
