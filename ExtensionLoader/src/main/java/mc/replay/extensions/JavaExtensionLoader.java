@@ -111,18 +111,12 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
 
     public JavaExtension loadExtensionFromFile(File file) throws IOException, InvalidExtensionException {
         ClassLoader classLoader = this.getClass().getClassLoader();
-        ExtensionConfig config = ExtensionLoaderUtils.getConfig(classLoader, "extension.yml");
-        if (config == null) return null;
 
-        checkNotNull(config.getMain(), "Extension main cannot be null (%s)".formatted(file.getName()));
-        checkNotNull(config.getName(), "Extension name cannot be null (%s)".formatted(file.getName()));
-        checkNotNull(config.getVersion(), "Extension version cannot be null (%s)".formatted(file.getName()));
-
-        try (ExtensionClassLoader extensionClassLoader = new ExtensionClassLoader(this, config, file, classLoader)) {
+        try (ExtensionClassLoader extensionClassLoader = new ExtensionClassLoader(this, file, classLoader)) {
             JavaExtension extension = extensionClassLoader.getExtension();
+            if (extension == null) return null;
 
             extension.setExtensionLoaderMethods(this);
-            extension.setConfig(config);
             extension.setMainFolder(this.folder);
             return extension;
         }

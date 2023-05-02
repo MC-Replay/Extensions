@@ -29,9 +29,9 @@ public final class ExtensionClassLoader extends URLClassLoader {
     private final JarFile jarFile;
     private final Manifest manifest;
 
-    private final JavaExtension extension;
+    private JavaExtension extension;
 
-    public ExtensionClassLoader(@NotNull JavaExtensionLoader loader, @NotNull ExtensionConfig config, @NotNull File file, @Nullable ClassLoader parent) throws IOException, InvalidExtensionException {
+    public ExtensionClassLoader(@NotNull JavaExtensionLoader loader, @NotNull File file, @Nullable ClassLoader parent) throws IOException, InvalidExtensionException {
         super(file.getName(), new URL[]{file.toURI().toURL()}, parent);
 
         this.loader = loader;
@@ -43,10 +43,29 @@ public final class ExtensionClassLoader extends URLClassLoader {
             this.url = file.toURI().toURL();
 
             try {
+                ExtensionConfig config = ExtensionLoaderUtils.getConfig(this, "extension.yml");
+                if (config == null)
+                    throw new InvalidExtensionException("No config file found for extension %s".formatted(this.file.getName()));
+                if (config.getMain() == null)
+                    throw new InvalidExtensionException("Extension main cannot be null (%s)".formatted(this.file.getName()));
+                if (config.getName() == null)
+                    throw new InvalidExtensionException("Extension name cannot be null (%s)".formatted(this.file.getName()));
+                if (config.getVersion() == null)
+                    throw new InvalidExtensionException("Extension version cannot be null (%s)".formatted(this.file.getName()));
+
                 Class<?> clazz = Class.forName(config.getMain(), false, this);
                 Class<? extends JavaExtension> javaExtension = clazz.asSubclass(JavaExtension.class);
 
-                this.extension = this.getExtension(javaExtension);
+                JavaExtension extension = this.getExtension(javaExtension);
+                if (extension != null) {
+                    extension.setConfig(config);
+                    this.extension = extension;
+
+                    this.extension.onLoad();
+                    this.extension.setIsLoaded(true);
+
+                    this.extension.onEnable();
+                }
             } catch (Exception exception) {
                 throw new InvalidExtensionException("", exception);
             }
