@@ -27,15 +27,15 @@ public abstract class JavaExtension implements Comparable<JavaExtension> {
         this.isLoaded = isLoaded;
     }
 
-    protected void onLoad() {
+    public void onLoad() {
 
     }
 
-    protected void onEnable() {
+    public void onEnable() {
 
     }
 
-    protected void onDisable() {
+    public void onDisable() {
 
     }
 
