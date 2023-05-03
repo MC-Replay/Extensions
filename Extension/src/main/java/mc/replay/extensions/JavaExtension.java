@@ -12,38 +12,38 @@ public abstract class JavaExtension implements Comparable<JavaExtension> {
     private ExtensionConfig config;
     private File mainFolder;
 
-    void init(ExtensionLoaderMethods extensionLoaderMethods, ExtensionConfig config, File mainFolder) {
+    final void init(ExtensionLoaderMethods extensionLoaderMethods, ExtensionConfig config, File mainFolder) {
         this.extensionLoaderMethods = extensionLoaderMethods;
         this.config = config;
         this.mainFolder = mainFolder;
     }
 
-    public @NotNull ExtensionConfig getConfig() {
+    public final @NotNull ExtensionConfig getConfig() {
         return this.config;
     }
 
-    public @NotNull String getName() {
+    public final @NotNull String getName() {
         return this.config.getName();
     }
 
-    public @NotNull String getVersion() {
+    public final @NotNull String getVersion() {
         return this.config.getVersion();
     }
 
-    public @NotNull File getMainFolder() {
+    public final @NotNull File getMainFolder() {
         return this.mainFolder;
     }
 
-    public @NotNull Collection<JavaExtension> getExtensions() {
+    public final @NotNull Collection<JavaExtension> getExtensions() {
         return this.extensionLoaderMethods.getExtensions();
     }
 
-    public @Nullable JavaExtension getExtensionByName(@NotNull String name) {
+    public final @Nullable JavaExtension getExtensionByName(@NotNull String name) {
         return this.extensionLoaderMethods.getExtensionByName(name);
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    public @NotNull File getDirectory() {
+    public final @NotNull File getDirectory() {
         File folder = new File(this.mainFolder, this.config.getName().replaceAll(" ", "-"));
 
         if (!folder.isDirectory() || !folder.exists()) {

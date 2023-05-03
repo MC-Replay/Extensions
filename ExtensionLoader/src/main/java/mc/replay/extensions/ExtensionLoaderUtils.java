@@ -30,10 +30,10 @@ final class ExtensionLoaderUtils {
     }
 
     static ExtensionConfig getConfig(File file) throws InvalidConfigurationException {
-        try (JarFile jarFile = new JarFile(file)) {
+        try (JarFile jarFile = createJarFile(file)) {
             JarEntry entry = jarFile.getJarEntry("extension.yml");
             if (entry == null) {
-                throw new InvalidConfigurationException(new FileNotFoundException("Jar does not contain plugin.yml"));
+                throw new InvalidConfigurationException(new FileNotFoundException("Jar does not contain extension.yml"));
             }
 
             ExtensionConfig config = ExtensionLoaderUtils.getConfig(jarFile, entry);

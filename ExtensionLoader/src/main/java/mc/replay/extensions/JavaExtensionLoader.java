@@ -9,7 +9,6 @@ import org.jetbrains.annotations.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class JavaExtensionLoader implements ExtensionLoaderMethods {
 
@@ -32,14 +31,14 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
     }
 
     @Override
-    public @NotNull Collection<JavaExtension> getExtensions() {
+    public final @NotNull Collection<JavaExtension> getExtensions() {
         return new TreeSet<>(this.loaders.values().stream().map(JavaExtensionClassLoader::getExtension).toList());
     }
 
     @SuppressWarnings("unchecked")
     @Override
     @Nullable
-    public JavaExtension getExtensionByName(@NotNull String name) {
+    public final JavaExtension getExtensionByName(@NotNull String name) {
         JavaExtensionClassLoader loader = this.loaders.get(name);
         return loader != null ? loader.getExtension() : null;
     }
@@ -111,7 +110,7 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
             throw new InvalidExtensionException(exception);
         }
 
-        JavaExtensionClassLoader extensionClassLoader = new JavaExtensionClassLoader(this, file, this.folder, config, classLoader);
+        JavaExtensionClassLoader extensionClassLoader = new JavaExtensionClassLoader(this, this.folder, file, config, classLoader);
         JavaExtension extension = extensionClassLoader.getExtension();
         if (extension == null) return null;
 

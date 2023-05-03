@@ -19,7 +19,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
-final class JavaExtensionClassLoader extends URLClassLoader {
+public final class JavaExtensionClassLoader extends URLClassLoader {
 
     private final JavaExtensionLoader loader;
     private final Map<String, Class<?>> classes = new ConcurrentHashMap<>();
@@ -45,9 +45,11 @@ final class JavaExtensionClassLoader extends URLClassLoader {
             Class<?> clazz = Class.forName(config.getMain(), true, this);
             Class<? extends JavaExtension> javaExtensionClass = clazz.asSubclass(JavaExtension.class);
 
-            JavaExtension extension = this.getExtension(javaExtensionClass);
-            if (extension == null) {
-                throw new InvalidExtensionException("Could not create extension instance for '%s'".formatted(this.file.getName()));
+            JavaExtension extension;
+            try {
+                extension = this.getExtension(javaExtensionClass);
+            } catch (Exception exception) {
+                throw new InvalidExtensionException("Could not create extension instance for '%s'".formatted(this.file.getName()), exception);
             }
 
             extension.init(loader, config, mainFolder);
@@ -156,13 +158,9 @@ final class JavaExtensionClassLoader extends URLClassLoader {
         throw new ClassNotFoundException(name);
     }
 
-    private JavaExtension getExtension(Class<? extends JavaExtension> extensionClass) {
-        try {
-            Constructor<?> constructor = extensionClass.getConstructor();
-            return (JavaExtension) constructor.newInstance();
-        } catch (Exception exception) {
-            return null;
-        }
+    private JavaExtension getExtension(Class<? extends JavaExtension> extensionClass) throws Exception {
+        Constructor<?> constructor = extensionClass.getConstructor();
+        return (JavaExtension) constructor.newInstance();
     }
 
     @Override
