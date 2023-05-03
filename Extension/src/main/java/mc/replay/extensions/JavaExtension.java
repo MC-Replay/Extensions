@@ -24,8 +24,8 @@ public abstract class JavaExtension implements Comparable<JavaExtension> {
         this.mainFolder = mainFolder;
     }
 
-    void setIsLoaded(boolean isLoaded) {
-        this.isLoaded = isLoaded;
+    void setIsLoaded() {
+        this.isLoaded = true;
     }
 
     public void onLoad() {
@@ -46,6 +46,14 @@ public abstract class JavaExtension implements Comparable<JavaExtension> {
 
     public ExtensionConfig getConfig() {
         return this.config;
+    }
+
+    public String getName() {
+        return this.config.getName();
+    }
+
+    public String getVersion() {
+        return this.config.getVersion();
     }
 
     public File getMainFolder() {

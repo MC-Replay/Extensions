@@ -3,21 +3,21 @@ package mc.replay.extensions;
 import mc.replay.extensions.exception.ExtensionNotLoadedException;
 import mc.replay.extensions.exception.InvalidExtensionException;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class JavaExtensionLoader implements ExtensionLoaderMethods {
 
-    private final File folder;
-    private final HashMap<String, JavaExtension> extensions;
+    private final Map<String, ExtensionClassLoader> extensions = new HashMap<>();
 
-    private final Map<String, ReentrantReadWriteLock> classLoadLock = new HashMap<>();
-    private final Map<String, Integer> classLoadLockCount = new HashMap<>();
-    private final List<ExtensionClassLoader> loaders = new CopyOnWriteArrayList<>();
+    private final File folder;
 
     public JavaExtensionLoader(File folder) {
         if (folder == null) {
@@ -29,14 +29,27 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
         }
 
         this.folder = folder;
-        this.extensions = this.loadAllExtensions();
+        this.loadAllExtensions();
+    }
+
+    @Override
+    public Collection<JavaExtension> getExtensions() {
+        return this.extensions.values().stream().map(ExtensionClassLoader::getExtension).toList();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    @Nullable
+    public JavaExtension getExtensionByName(@NotNull String name) {
+        ExtensionClassLoader loader = this.extensions.get(name);
+        return loader != null ? loader.getExtension() : null;
     }
 
     public void loadExtensions() {
-        for (ExtensionClassLoader loader : this.loaders) {
+        for (ExtensionClassLoader loader : this.extensions.values()) {
             try {
                 loader.getExtension().onLoad();
-                loader.getExtension().setIsLoaded(true);
+                loader.getExtension().setIsLoaded();
             } catch (Exception exception) {
                 System.err.println("Error while loading extension " + loader.getExtension().getConfig().getName() + ":");
                 exception.printStackTrace();
@@ -45,7 +58,7 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
     }
 
     public void enableExtensions() {
-        for (ExtensionClassLoader loader : this.loaders) {
+        for (ExtensionClassLoader loader : this.extensions.values()) {
             if (!loader.getExtension().isLoaded()) {
                 throw new ExtensionNotLoadedException("Extension " + loader.getExtension().getConfig().getName() + " is not loaded.");
             }
@@ -60,7 +73,7 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
     }
 
     public void disableExtensions() {
-        for (ExtensionClassLoader loader : this.loaders) {
+        for (ExtensionClassLoader loader : this.extensions.values()) {
             try {
                 loader.getExtension().onDisable();
             } catch (Exception exception) {
@@ -70,24 +83,9 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
         }
     }
 
-    @Override
-    public Collection<JavaExtension> getExtensions() {
-        return this.extensions.values();
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public JavaExtension getExtensionByName(@NotNull String name) {
-        return this.extensions.get(name);
-    }
-
-    private HashMap<String, JavaExtension> loadAllExtensions() {
-        HashMap<String, JavaExtension> extensions = new HashMap<>();
-
+    void loadAllExtensions() {
         File[] listFiles = this.folder.listFiles();
-        if (listFiles == null) {
-            return extensions;
-        }
+        if (listFiles == null) return;
 
         File[] files = Arrays.stream(listFiles)
                 .filter(x -> x.getName().endsWith(".jar"))
@@ -95,20 +93,19 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
 
         for (File file : files) {
             try {
-                JavaExtension extension = this.loadExtensionFromFile(file);
+                ExtensionClassLoader loader = this.loadExtensionFromFile(file);
+                JavaExtension extension = loader.getExtension();
 
                 if (extension != null) {
-                    extensions.put(extension.getConfig().getName(), extension);
+                    this.extensions.put(extension.getName(), loader);
                 }
             } catch (Exception exception) {
                 exception.printStackTrace();
             }
         }
-
-        return extensions;
     }
 
-    public JavaExtension loadExtensionFromFile(File file) throws IOException, InvalidExtensionException {
+    ExtensionClassLoader loadExtensionFromFile(File file) throws IOException, InvalidExtensionException {
         ClassLoader classLoader = this.getClass().getClassLoader();
 
         try (ExtensionClassLoader extensionClassLoader = new ExtensionClassLoader(this, file, classLoader)) {
@@ -117,23 +114,12 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
 
             extension.setExtensionLoaderMethods(this);
             extension.setMainFolder(this.folder);
-            return extension;
+            return extensionClassLoader;
         }
     }
 
-    public void unloadExtension(@NotNull JavaExtension extension) {
-        try {
-            for (ExtensionClassLoader loader : this.loaders) {
-                if (loader.getExtension().equals(extension)) {
-                    this.loaders.remove(loader);
-                    loader.close();
-                    break;
-                }
-            }
-        } catch (Exception exception) {
-            exception.printStackTrace();
-        }
-    }
+    final Map<String, ReentrantReadWriteLock> classLoadLock = new HashMap<>();
+    final Map<String, Integer> classLoadLockCount = new HashMap<>();
 
     Class<?> getClassByName(String name, boolean resolve, ExtensionClassLoader requester) {
         ReentrantReadWriteLock lock;
@@ -152,7 +138,7 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
                 }
             }
 
-            for (ExtensionClassLoader loader : this.loaders) {
+            for (ExtensionClassLoader loader : this.extensions.values()) {
                 try {
                     return loader.loadClass0(name, resolve, false);
                 } catch (ClassNotFoundException ignored) {
@@ -172,15 +158,5 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
         }
 
         return null;
-    }
-
-    private void checkNotNull(Object reference, Object errorMessage) {
-        if (reference == null) {
-            if (errorMessage != null) {
-                throw new NullPointerException(String.valueOf(errorMessage));
-            } else {
-                throw new NullPointerException();
-            }
-        }
     }
 }
