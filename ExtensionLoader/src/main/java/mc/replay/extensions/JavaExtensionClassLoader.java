@@ -19,7 +19,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
-public final class JavaExtensionClassLoader extends URLClassLoader {
+final class JavaExtensionClassLoader extends URLClassLoader {
 
     private final JavaExtensionLoader loader;
     private final Map<String, Class<?>> classes = new ConcurrentHashMap<>();
@@ -31,7 +31,7 @@ public final class JavaExtensionClassLoader extends URLClassLoader {
 
     private final JavaExtension extension;
 
-    public JavaExtensionClassLoader(@NotNull JavaExtensionLoader loader, @NotNull File file, @NotNull ExtensionConfig config, @Nullable ClassLoader parent) throws IOException, InvalidExtensionException {
+    JavaExtensionClassLoader(@NotNull JavaExtensionLoader loader, @NotNull File mainFolder, @NotNull File file, @NotNull ExtensionConfig config, @Nullable ClassLoader parent) throws IOException, InvalidExtensionException {
         super("Extension-" + config.getName(), new URL[]{file.toURI().toURL()}, parent);
 
         this.loader = loader;
@@ -50,35 +50,12 @@ public final class JavaExtensionClassLoader extends URLClassLoader {
                 throw new InvalidExtensionException("Could not create extension instance for '%s'".formatted(this.file.getName()));
             }
 
-            extension.setConfig(config);
+            extension.init(loader, config, mainFolder);
+
             this.extension = extension;
         } catch (Exception exception) {
             throw new InvalidExtensionException("", exception);
         }
-    }
-
-    public JavaExtensionLoader getLoader() {
-        return this.loader;
-    }
-
-    public Map<String, Class<?>> getClasses() {
-        return this.classes;
-    }
-
-    public File getFile() {
-        return this.file;
-    }
-
-    public URL getUrl() {
-        return this.url;
-    }
-
-    public JarFile getJarFile() {
-        return this.jarFile;
-    }
-
-    public Manifest getManifest() {
-        return this.manifest;
     }
 
     public JavaExtension getExtension() {
@@ -170,7 +147,7 @@ public final class JavaExtensionClassLoader extends URLClassLoader {
         }
 
         if (checkGlobal) {
-            Class<?> result = this.loader.getClassByName(name, resolve, this);
+            Class<?> result = this.loader.classFinder.getClassByName(name, resolve, this);
             if (result != null && result.getClassLoader() instanceof JavaExtensionClassLoader) {
                 return result;
             }

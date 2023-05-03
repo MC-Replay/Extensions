@@ -7,7 +7,7 @@ import java.util.Collection;
 
 public interface ExtensionLoaderMethods {
 
-    Collection<JavaExtension> getExtensions();
+    @NotNull Collection<JavaExtension> getExtensions();
 
-    @Nullable <T extends JavaExtension> T getExtensionByName(@NotNull String string);
+    <T extends JavaExtension> @Nullable T getExtensionByName(@NotNull String string);
 }

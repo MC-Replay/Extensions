@@ -1,54 +1,49 @@
 package mc.replay.extensions;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.Collection;
 
 public abstract class JavaExtension implements Comparable<JavaExtension> {
 
-    protected ExtensionLoaderMethods extensionLoaderMethods;
-    protected ExtensionConfig config;
-    protected File mainFolder;
+    private ExtensionLoaderMethods extensionLoaderMethods;
+    private ExtensionConfig config;
+    private File mainFolder;
 
-    void setExtensionLoaderMethods(ExtensionLoaderMethods extensionLoaderMethods) {
+    void init(ExtensionLoaderMethods extensionLoaderMethods, ExtensionConfig config, File mainFolder) {
         this.extensionLoaderMethods = extensionLoaderMethods;
-    }
-
-    void setConfig(ExtensionConfig config) {
         this.config = config;
-    }
-
-    void setMainFolder(File mainFolder) {
         this.mainFolder = mainFolder;
     }
 
-    public ExtensionConfig getConfig() {
+    public @NotNull ExtensionConfig getConfig() {
         return this.config;
     }
 
-    public String getName() {
+    public @NotNull String getName() {
         return this.config.getName();
     }
 
-    public String getVersion() {
+    public @NotNull String getVersion() {
         return this.config.getVersion();
     }
 
-    public File getMainFolder() {
+    public @NotNull File getMainFolder() {
         return this.mainFolder;
     }
 
-    public Collection<JavaExtension> getExtensions() {
+    public @NotNull Collection<JavaExtension> getExtensions() {
         return this.extensionLoaderMethods.getExtensions();
     }
 
-    public JavaExtension getExtensionByName(String name) {
+    public @Nullable JavaExtension getExtensionByName(@NotNull String name) {
         return this.extensionLoaderMethods.getExtensionByName(name);
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    public File getDirectory() {
+    public @NotNull File getDirectory() {
         File folder = new File(this.mainFolder, this.config.getName().replaceAll(" ", "-"));
 
         if (!folder.isDirectory() || !folder.exists()) {
@@ -59,7 +54,7 @@ public abstract class JavaExtension implements Comparable<JavaExtension> {
     }
 
     @Override
-    public int compareTo(@NotNull JavaExtension o) {
+    public final int compareTo(@NotNull JavaExtension o) {
         for (String dependency : this.config.getDepends()) {
             if (dependency.equalsIgnoreCase(this.config.getName())) return 0;
 

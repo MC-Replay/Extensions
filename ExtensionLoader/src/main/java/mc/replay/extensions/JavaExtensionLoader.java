@@ -7,20 +7,18 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 
 public class JavaExtensionLoader implements ExtensionLoaderMethods {
 
+    final ClassFinder classFinder;
     final Map<String, JavaExtensionClassLoader> loaders = new HashMap<>();
 
     private final File folder;
 
-    public JavaExtensionLoader(File folder) {
+    public JavaExtensionLoader(@NotNull File folder) {
         if (folder == null) {
             throw new IllegalArgumentException("Extension folder is null.");
         }
@@ -30,10 +28,11 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
         }
 
         this.folder = folder;
+        this.classFinder = new ClassFinder(this);
     }
 
     @Override
-    public Collection<JavaExtension> getExtensions() {
+    public @NotNull Collection<JavaExtension> getExtensions() {
         return new TreeSet<>(this.loaders.values().stream().map(JavaExtensionClassLoader::getExtension).toList());
     }
 
@@ -107,82 +106,15 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
         ClassLoader classLoader = this.getClass().getClassLoader();
         ExtensionConfig config;
         try {
-            config = this.getConfig(file);
+            config = ExtensionLoaderUtils.getConfig(file);
         } catch (InvalidConfigurationException exception) {
             throw new InvalidExtensionException(exception);
         }
 
-        JavaExtensionClassLoader extensionClassLoader = new JavaExtensionClassLoader(this, file, config, classLoader);
+        JavaExtensionClassLoader extensionClassLoader = new JavaExtensionClassLoader(this, file, this.folder, config, classLoader);
         JavaExtension extension = extensionClassLoader.getExtension();
         if (extension == null) return null;
 
-        extension.setExtensionLoaderMethods(this);
-        extension.setMainFolder(this.folder);
         return extensionClassLoader;
-    }
-
-    private ExtensionConfig getConfig(File file) throws InvalidConfigurationException {
-        try (JarFile jarFile = new JarFile(file)) {
-            JarEntry entry = jarFile.getJarEntry("extension.yml");
-            if (entry == null) {
-                throw new InvalidConfigurationException(new FileNotFoundException("Jar does not contain plugin.yml"));
-            }
-
-            ExtensionConfig config = ExtensionLoaderUtils.getConfig(jarFile, entry);
-            if (config == null)
-                throw new InvalidConfigurationException("No config file found for extension %s".formatted(file.getName()));
-            if (config.getMain() == null)
-                throw new InvalidConfigurationException("Extension main cannot be null (%s)".formatted(file.getName()));
-            if (config.getName() == null)
-                throw new InvalidConfigurationException("Extension name cannot be null (%s)".formatted(file.getName()));
-            if (config.getVersion() == null)
-                throw new InvalidConfigurationException("Extension version cannot be null (%s)".formatted(file.getName()));
-
-            return config;
-        } catch (IOException exception) {
-            throw new InvalidConfigurationException(exception);
-        }
-    }
-
-    private final Map<String, ReentrantReadWriteLock> classLoadLock = new HashMap<>();
-    private final Map<String, Integer> classLoadLockCount = new HashMap<>();
-
-    Class<?> getClassByName(String name, boolean resolve, JavaExtensionClassLoader requester) {
-        ReentrantReadWriteLock lock;
-        synchronized (this.classLoadLock) {
-            lock = this.classLoadLock.computeIfAbsent(name, (x) -> new ReentrantReadWriteLock());
-            this.classLoadLockCount.compute(name, (x, prev) -> (prev == null) ? 1 : prev + 1);
-        }
-
-        lock.writeLock().lock();
-
-        try {
-            if (requester != null) {
-                try {
-                    return requester.loadClass0(name, false, false);
-                } catch (ClassNotFoundException ignored) {
-                }
-            }
-
-            for (JavaExtensionClassLoader loader : this.loaders.values()) {
-                try {
-                    return loader.loadClass0(name, resolve, false);
-                } catch (ClassNotFoundException ignored) {
-                }
-            }
-        } finally {
-            synchronized (this.classLoadLock) {
-                lock.writeLock().unlock();
-
-                if (this.classLoadLockCount.get(name) == 1) {
-                    this.classLoadLock.remove(name);
-                    this.classLoadLockCount.remove(name);
-                } else {
-                    this.classLoadLockCount.computeIfPresent(name, (x, prev) -> prev - 1);
-                }
-            }
-        }
-
-        return null;
     }
 }
