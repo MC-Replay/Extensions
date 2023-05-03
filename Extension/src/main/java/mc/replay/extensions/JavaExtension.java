@@ -7,10 +7,9 @@ import java.util.Collection;
 
 public abstract class JavaExtension implements Comparable<JavaExtension> {
 
-    private ExtensionLoaderMethods extensionLoaderMethods;
-    private ExtensionConfig config;
-    private File mainFolder;
-    private boolean isLoaded;
+    protected ExtensionLoaderMethods extensionLoaderMethods;
+    protected ExtensionConfig config;
+    protected File mainFolder;
 
     void setExtensionLoaderMethods(ExtensionLoaderMethods extensionLoaderMethods) {
         this.extensionLoaderMethods = extensionLoaderMethods;
@@ -22,26 +21,6 @@ public abstract class JavaExtension implements Comparable<JavaExtension> {
 
     void setMainFolder(File mainFolder) {
         this.mainFolder = mainFolder;
-    }
-
-    void setIsLoaded() {
-        this.isLoaded = true;
-    }
-
-    public void onLoad() {
-
-    }
-
-    public void onEnable() {
-
-    }
-
-    public void onDisable() {
-
-    }
-
-    public boolean isLoaded() {
-        return this.isLoaded;
     }
 
     public ExtensionConfig getConfig() {

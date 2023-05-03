@@ -3,12 +3,11 @@ package mc.replay.extensions;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
-import java.net.URL;
 import java.util.Map;
+import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 final class ExtensionLoaderUtils {
@@ -28,9 +27,9 @@ final class ExtensionLoaderUtils {
         }
     }
 
-    public static ExtensionConfig getConfig(ClassLoader classLoader, String ymlFile) {
+    public static ExtensionConfig getConfig(JarFile jarFile, JarEntry entry) {
         Yaml yaml = new Yaml();
-        try (InputStream inputStream = classLoader.getResourceAsStream(ymlFile)) {
+        try (InputStream inputStream = jarFile.getInputStream(entry)) {
             Map<String, Object> data = yaml.load(inputStream);
             return new ExtensionConfig(data);
         } catch (Exception exception) {

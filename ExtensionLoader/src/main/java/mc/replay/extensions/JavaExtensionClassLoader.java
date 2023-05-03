@@ -19,7 +19,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
-public final class ExtensionClassLoader extends URLClassLoader {
+public final class JavaExtensionClassLoader extends URLClassLoader {
 
     private final JavaExtensionLoader loader;
     private final Map<String, Class<?>> classes = new ConcurrentHashMap<>();
@@ -29,46 +29,31 @@ public final class ExtensionClassLoader extends URLClassLoader {
     private final JarFile jarFile;
     private final Manifest manifest;
 
-    private JavaExtension extension;
+    private final JavaExtension extension;
 
-    public ExtensionClassLoader(@NotNull JavaExtensionLoader loader, @NotNull File file, @Nullable ClassLoader parent) throws IOException, InvalidExtensionException {
-        super(file.getName(), new URL[]{file.toURI().toURL()}, parent);
+    public JavaExtensionClassLoader(@NotNull JavaExtensionLoader loader, @NotNull File file, @NotNull ExtensionConfig config, @Nullable ClassLoader parent) throws IOException, InvalidExtensionException {
+        super("Extension-" + config.getName(), new URL[]{file.toURI().toURL()}, parent);
 
         this.loader = loader;
         this.file = file;
 
-        try (JarFile jarFile = ExtensionLoaderUtils.createJarFile(file)) {
-            this.jarFile = jarFile;
-            this.manifest = this.jarFile.getManifest();
-            this.url = file.toURI().toURL();
+        this.jarFile = ExtensionLoaderUtils.createJarFile(file);
+        this.manifest = this.jarFile.getManifest();
+        this.url = file.toURI().toURL();
 
-            try {
-                ExtensionConfig config = ExtensionLoaderUtils.getConfig(this, "extension.yml");
-                if (config == null)
-                    throw new InvalidExtensionException("No config file found for extension %s".formatted(this.file.getName()));
-                if (config.getMain() == null)
-                    throw new InvalidExtensionException("Extension main cannot be null (%s)".formatted(this.file.getName()));
-                if (config.getName() == null)
-                    throw new InvalidExtensionException("Extension name cannot be null (%s)".formatted(this.file.getName()));
-                if (config.getVersion() == null)
-                    throw new InvalidExtensionException("Extension version cannot be null (%s)".formatted(this.file.getName()));
+        try {
+            Class<?> clazz = Class.forName(config.getMain(), true, this);
+            Class<? extends JavaExtension> javaExtensionClass = clazz.asSubclass(JavaExtension.class);
 
-                Class<?> clazz = Class.forName(config.getMain(), false, this);
-                Class<? extends JavaExtension> javaExtension = clazz.asSubclass(JavaExtension.class);
-
-                JavaExtension extension = this.getExtension(javaExtension);
-                if (extension != null) {
-                    extension.setConfig(config);
-                    this.extension = extension;
-
-//                    this.extension.onLoad();
-//                    this.extension.setIsLoaded(true);
-//
-//                    this.extension.onEnable();
-                }
-            } catch (Exception exception) {
-                throw new InvalidExtensionException("", exception);
+            JavaExtension extension = this.getExtension(javaExtensionClass);
+            if (extension == null) {
+                throw new InvalidExtensionException("Could not create extension instance for '%s'".formatted(this.file.getName()));
             }
+
+            extension.setConfig(config);
+            this.extension = extension;
+        } catch (Exception exception) {
+            throw new InvalidExtensionException("", exception);
         }
     }
 
@@ -107,6 +92,10 @@ public final class ExtensionClassLoader extends URLClassLoader {
 
     @Override
     public Class<?> findClass(String name) throws ClassNotFoundException {
+        if (name.startsWith("mc.replay.extensions.")) {
+            throw new ClassNotFoundException(name);
+        }
+
         Class<?> result = this.classes.get(name);
 
         if (result == null) {
@@ -182,7 +171,7 @@ public final class ExtensionClassLoader extends URLClassLoader {
 
         if (checkGlobal) {
             Class<?> result = this.loader.getClassByName(name, resolve, this);
-            if (result != null && result.getClassLoader() instanceof ExtensionClassLoader) {
+            if (result != null && result.getClassLoader() instanceof JavaExtensionClassLoader) {
                 return result;
             }
         }
@@ -192,8 +181,7 @@ public final class ExtensionClassLoader extends URLClassLoader {
 
     private JavaExtension getExtension(Class<? extends JavaExtension> extensionClass) {
         try {
-            Class<?> initializedClass = Class.forName(extensionClass.getName(), true, this);
-            Constructor<?> constructor = initializedClass.getConstructor();
+            Constructor<?> constructor = extensionClass.getConstructor();
             return (JavaExtension) constructor.newInstance();
         } catch (Exception exception) {
             return null;
