@@ -1,25 +1,23 @@
 package mc.replay.extensions;
 
-import mc.replay.extensions.exception.ExtensionNotLoadedException;
+import mc.replay.extensions.exception.InvalidConfigurationException;
 import mc.replay.extensions.exception.InvalidExtensionException;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class JavaExtensionLoader implements ExtensionLoaderMethods {
 
+    final ClassFinder classFinder;
+    final Map<String, JavaExtensionClassLoader> loaders = new HashMap<>();
+
     private final File folder;
-    private final HashMap<String, JavaExtension> extensions;
 
-    private final Map<String, ReentrantReadWriteLock> classLoadLock = new HashMap<>();
-    private final Map<String, Integer> classLoadLockCount = new HashMap<>();
-    private final List<ExtensionClassLoader> loaders = new CopyOnWriteArrayList<>();
-
-    public JavaExtensionLoader(File folder) {
+    public JavaExtensionLoader(@NotNull File folder) {
         if (folder == null) {
             throw new IllegalArgumentException("Extension folder is null.");
         }
@@ -29,165 +27,93 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
         }
 
         this.folder = folder;
-        this.extensions = this.loadAllExtensions();
-    }
-
-    public void loadExtensions() {
-        for (JavaExtension extension : new TreeSet<>(this.extensions.values())) {
-            try {
-                extension.onLoad();
-                extension.setIsLoaded(true);
-            } catch (Exception exception) {
-                System.err.println("Error while loading extension " + extension.getConfig().getName() + ":");
-                exception.printStackTrace();
-            }
-        }
-    }
-
-    public void enableExtensions() {
-        for (JavaExtension extension : new TreeSet<>(this.extensions.values())) {
-            if (!extension.isLoaded()) {
-                throw new ExtensionNotLoadedException("Extension " + extension.getConfig().getName() + " is not loaded.");
-            }
-
-            try {
-                extension.onEnable();
-            } catch (Exception exception) {
-                System.err.println("Error while enabling extension " + extension.getConfig().getName() + ":");
-                exception.printStackTrace();
-            }
-        }
-    }
-
-    public void disableExtensions() {
-        for (JavaExtension extension : new TreeSet<>(this.extensions.values())) {
-
-            try {
-                extension.onDisable();
-            } catch (Exception exception) {
-                System.err.println("Error while disabling extension " + extension.getConfig().getName() + ":");
-                exception.printStackTrace();
-            }
-        }
+        this.classFinder = new ClassFinder(this);
     }
 
     @Override
-    public Collection<JavaExtension> getExtensions() {
-        return this.extensions.values();
+    public final @NotNull Collection<JavaExtension> getExtensions() {
+        return new TreeSet<>(this.loaders.values().stream().map(JavaExtensionClassLoader::getExtension).toList());
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public JavaExtension getExtensionByName(@NotNull String name) {
-        return this.extensions.get(name);
+    @Nullable
+    public final JavaExtension getExtensionByName(@NotNull String name) {
+        JavaExtensionClassLoader loader = this.loaders.get(name);
+        return loader != null ? loader.getExtension() : null;
     }
 
-    private HashMap<String, JavaExtension> loadAllExtensions() {
-        HashMap<String, JavaExtension> extensions = new HashMap<>();
-
+    public void loadExtensions() throws IOException, InvalidExtensionException {
         File[] listFiles = this.folder.listFiles();
-        if (listFiles == null) {
-            return extensions;
-        }
+        if (listFiles == null) return;
 
         File[] files = Arrays.stream(listFiles)
                 .filter(x -> x.getName().endsWith(".jar"))
                 .toArray(File[]::new);
 
         for (File file : files) {
-            try {
-                JavaExtension extension = this.loadExtensionFromFile(file);
-
-                if (extension != null) {
-                    extensions.put(extension.getConfig().getName(), extension);
-                }
-            } catch (Exception exception) {
-                exception.printStackTrace();
-            }
+            this.loadExtension(file);
         }
-
-        return extensions;
     }
 
-    public JavaExtension loadExtensionFromFile(File file) throws IOException, InvalidExtensionException {
+    @ApiStatus.Experimental
+    public void loadExtension(@NotNull String fileName) throws IOException, InvalidExtensionException {
+        if (!fileName.endsWith(".jar")) fileName += ".jar";
+
+        File file = new File(this.folder, fileName);
+        this.loadExtension(file);
+    }
+
+    @ApiStatus.Experimental
+    public void loadExtension(@NotNull File file) throws IOException, InvalidExtensionException {
+        if (!file.exists() || !file.getParentFile().equals(this.folder)) {
+            throw new InvalidExtensionException("File '%s' doesn't exist or is not in folder of this loader.".formatted(file.getName()));
+        }
+
+        JavaExtensionClassLoader loader = this.loadExtensionFromFile(file);
+        if (loader == null) {
+            throw new InvalidExtensionException("Couldn't create class loader for extension file '%s'".formatted(file.getName()));
+        }
+
+        JavaExtension extension = loader.getExtension();
+
+        if (extension != null) {
+            this.loaders.put(extension.getName(), loader);
+        }
+    }
+
+    public void unloadExtensions() throws IOException {
+        for (JavaExtension extension : this.getExtensions()) {
+            this.unloadExtension(extension);
+        }
+    }
+
+    public void unloadExtension(@NotNull JavaExtension extension) throws IOException {
+        this.unloadExtension(extension.getName());
+    }
+
+    public void unloadExtension(@NotNull String extensionName) throws IOException {
+        JavaExtensionClassLoader loader = this.loaders.remove(extensionName);
+        if (loader == null) {
+            throw new IllegalArgumentException("Extension '%s' was not loaded.".formatted(extensionName));
+        }
+
+        loader.close();
+    }
+
+    private JavaExtensionClassLoader loadExtensionFromFile(File file) throws IOException, InvalidExtensionException {
         ClassLoader classLoader = this.getClass().getClassLoader();
-        ExtensionConfig config = ExtensionLoaderUtils.getConfig(classLoader, "extension.yml");
-        if (config == null) return null;
-
-        checkNotNull(config.getMain(), "Extension main cannot be null (%s)".formatted(file.getName()));
-        checkNotNull(config.getName(), "Extension name cannot be null (%s)".formatted(file.getName()));
-        checkNotNull(config.getVersion(), "Extension version cannot be null (%s)".formatted(file.getName()));
-
-        try (ExtensionClassLoader extensionClassLoader = new ExtensionClassLoader(this, config, file, classLoader)) {
-            JavaExtension extension = extensionClassLoader.getExtension();
-
-            extension.setExtensionLoaderMethods(this);
-            extension.setConfig(config);
-            extension.setMainFolder(this.folder);
-            return extension;
-        }
-    }
-
-    public void unloadExtension(@NotNull JavaExtension extension) {
+        ExtensionConfig config;
         try {
-            for (ExtensionClassLoader loader : this.loaders) {
-                if (loader.getExtension().equals(extension)) {
-                    this.loaders.remove(loader);
-                    loader.close();
-                    break;
-                }
-            }
-        } catch (Exception exception) {
-            exception.printStackTrace();
-        }
-    }
-
-    Class<?> getClassByName(String name, boolean resolve, ExtensionClassLoader requester) {
-        ReentrantReadWriteLock lock;
-        synchronized (this.classLoadLock) {
-            lock = this.classLoadLock.computeIfAbsent(name, (x) -> new ReentrantReadWriteLock());
-            this.classLoadLockCount.compute(name, (x, prev) -> (prev == null) ? 1 : prev + 1);
+            config = ExtensionLoaderUtils.getConfig(file);
+        } catch (InvalidConfigurationException exception) {
+            throw new InvalidExtensionException(exception);
         }
 
-        lock.writeLock().lock();
+        JavaExtensionClassLoader extensionClassLoader = new JavaExtensionClassLoader(this, this.folder, file, config, classLoader);
+        JavaExtension extension = extensionClassLoader.getExtension();
+        if (extension == null) return null;
 
-        try {
-            if (requester != null) {
-                try {
-                    return requester.loadClass0(name, false, false);
-                } catch (ClassNotFoundException ignored) {
-                }
-            }
-
-            for (ExtensionClassLoader loader : this.loaders) {
-                try {
-                    return loader.loadClass0(name, resolve, false);
-                } catch (ClassNotFoundException ignored) {
-                }
-            }
-        } finally {
-            synchronized (this.classLoadLock) {
-                lock.writeLock().unlock();
-
-                if (this.classLoadLockCount.get(name) == 1) {
-                    this.classLoadLock.remove(name);
-                    this.classLoadLockCount.remove(name);
-                } else {
-                    this.classLoadLockCount.computeIfPresent(name, (x, prev) -> prev - 1);
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private void checkNotNull(Object reference, Object errorMessage) {
-        if (reference == null) {
-            if (errorMessage != null) {
-                throw new NullPointerException(String.valueOf(errorMessage));
-            } else {
-                throw new NullPointerException();
-            }
-        }
+        return extensionClassLoader;
     }
 }

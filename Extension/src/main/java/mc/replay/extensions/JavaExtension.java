@@ -1,6 +1,7 @@
 package mc.replay.extensions;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.Collection;
@@ -10,58 +11,39 @@ public abstract class JavaExtension implements Comparable<JavaExtension> {
     private ExtensionLoaderMethods extensionLoaderMethods;
     private ExtensionConfig config;
     private File mainFolder;
-    private boolean isLoaded;
 
-    void setExtensionLoaderMethods(ExtensionLoaderMethods extensionLoaderMethods) {
+    final void init(ExtensionLoaderMethods extensionLoaderMethods, ExtensionConfig config, File mainFolder) {
         this.extensionLoaderMethods = extensionLoaderMethods;
-    }
-
-    void setConfig(ExtensionConfig config) {
         this.config = config;
-    }
-
-    void setMainFolder(File mainFolder) {
         this.mainFolder = mainFolder;
     }
 
-    void setIsLoaded(boolean isLoaded) {
-        this.isLoaded = isLoaded;
-    }
-
-    public void onLoad() {
-
-    }
-
-    public void onEnable() {
-
-    }
-
-    public void onDisable() {
-
-    }
-
-    public boolean isLoaded() {
-        return this.isLoaded;
-    }
-
-    public ExtensionConfig getConfig() {
+    public final @NotNull ExtensionConfig getConfig() {
         return this.config;
     }
 
-    public File getMainFolder() {
+    public final @NotNull String getName() {
+        return this.config.getName();
+    }
+
+    public final @NotNull String getVersion() {
+        return this.config.getVersion();
+    }
+
+    public final @NotNull File getMainFolder() {
         return this.mainFolder;
     }
 
-    public Collection<JavaExtension> getExtensions() {
+    public final @NotNull Collection<JavaExtension> getExtensions() {
         return this.extensionLoaderMethods.getExtensions();
     }
 
-    public JavaExtension getExtensionByName(String name) {
+    public final @Nullable JavaExtension getExtensionByName(@NotNull String name) {
         return this.extensionLoaderMethods.getExtensionByName(name);
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    public File getDirectory() {
+    public final @NotNull File getDirectory() {
         File folder = new File(this.mainFolder, this.config.getName().replaceAll(" ", "-"));
 
         if (!folder.isDirectory() || !folder.exists()) {
@@ -72,7 +54,7 @@ public abstract class JavaExtension implements Comparable<JavaExtension> {
     }
 
     @Override
-    public int compareTo(@NotNull JavaExtension o) {
+    public final int compareTo(@NotNull JavaExtension o) {
         for (String dependency : this.config.getDepends()) {
             if (dependency.equalsIgnoreCase(this.config.getName())) return 0;
 
