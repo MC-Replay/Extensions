@@ -1,21 +1,28 @@
 package mc.replay.extensions;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.UnknownNullability;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class ExtensionConfig {
+public final class ExtensionConfig {
 
     private final String main;
     private final String name;
     private final String version;
     private final List<String> depends;
 
-    protected ExtensionConfig(Map<String, Object> data) {
-        this.main = this.load(data, "main", null);
-        this.name = this.load(data, "name", null);
-        this.version = this.load(data, "version", null);
-        this.depends = this.load(data, "depends", new ArrayList<>());
+    private final Map<String, Object> data;
+
+    ExtensionConfig(Map<String, Object> data) {
+        this.data = data;
+
+        this.main = this.load("main", null);
+        this.name = this.load("name", null);
+        this.version = this.load("version", null);
+        this.depends = this.load("depends", new ArrayList<>());
     }
 
     public String getMain() {
@@ -34,9 +41,13 @@ public class ExtensionConfig {
         return this.depends;
     }
 
+    public <T> T get(@NotNull String key, @UnknownNullability T defaultValue) {
+        return this.load(key, defaultValue);
+    }
+
     @SuppressWarnings("unchecked")
-    <T> T load(Map<String, Object> dataMap, String key, T defaultValue) {
-        Object data = dataMap.get(key);
+    private <T> T load(String key, T defaultValue) {
+        Object data = this.data.get(key);
         if (data == null) return defaultValue;
 
         try {
