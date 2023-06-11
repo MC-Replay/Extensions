@@ -51,8 +51,29 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
                 .filter(x -> x.getName().endsWith(".jar"))
                 .toArray(File[]::new);
 
+        TreeMap<ExtensionConfig, File> configs = new TreeMap<>(Comparator.comparing((file) -> file, (config1, config2) -> {
+            for (String dependency : config1.getDepends()) {
+                if (dependency.equalsIgnoreCase(config1.getName())) return 0;
+
+                if (config2.getName().equalsIgnoreCase(dependency) || dependency.equalsIgnoreCase("all")) {
+                    return 1;
+                }
+            }
+
+            return -1;
+        }));
+
         for (File file : files) {
-            this.loadExtension(file);
+            if (!file.exists() || !file.getParentFile().equals(this.folder)) {
+                throw new InvalidExtensionException("File '%s' doesn't exist or is not in folder of this loader.".formatted(file.getName()));
+            }
+
+            ExtensionConfig config = this.loadConfig(file);
+            configs.put(config, file);
+        }
+
+        for (Map.Entry<ExtensionConfig, File> entry : configs.entrySet()) {
+            this.loadExtension0(entry.getValue(), entry.getKey());
         }
     }
 
@@ -70,16 +91,8 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
             throw new InvalidExtensionException("File '%s' doesn't exist or is not in folder of this loader.".formatted(file.getName()));
         }
 
-        JavaExtensionClassLoader loader = this.loadExtensionFromFile(file);
-        if (loader == null) {
-            throw new InvalidExtensionException("Couldn't create class loader for extension file '%s'".formatted(file.getName()));
-        }
-
-        JavaExtension extension = loader.getExtension();
-
-        if (extension != null) {
-            this.loaders.put(extension.getName(), loader);
-        }
+        ExtensionConfig config = this.loadConfig(file);
+        this.loadExtension0(file, config);
     }
 
     public void unloadExtensions() throws IOException {
@@ -101,19 +114,34 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
         loader.close();
     }
 
-    private JavaExtensionClassLoader loadExtensionFromFile(File file) throws IOException, InvalidExtensionException {
-        ClassLoader classLoader = this.getClass().getClassLoader();
-        ExtensionConfig config;
-        try {
-            config = ExtensionLoaderUtils.getConfig(file);
-        } catch (InvalidConfigurationException exception) {
-            throw new InvalidExtensionException(exception);
+    private void loadExtension0(File file, ExtensionConfig config) throws IOException, InvalidExtensionException {
+        JavaExtensionClassLoader loader = this.loadExtensionFromFile(file, config);
+        if (loader == null) {
+            throw new InvalidExtensionException("Couldn't create class loader for extension file '%s'".formatted(file.getName()));
         }
+
+        JavaExtension extension = loader.getExtension();
+
+        if (extension != null) {
+            this.loaders.put(extension.getName(), loader);
+        }
+    }
+
+    private JavaExtensionClassLoader loadExtensionFromFile(File file, ExtensionConfig config) throws IOException, InvalidExtensionException {
+        ClassLoader classLoader = this.getClass().getClassLoader();
 
         JavaExtensionClassLoader extensionClassLoader = new JavaExtensionClassLoader(this, this.folder, file, config, classLoader);
         JavaExtension extension = extensionClassLoader.getExtension();
         if (extension == null) return null;
 
         return extensionClassLoader;
+    }
+
+    private ExtensionConfig loadConfig(File file) throws InvalidExtensionException {
+        try {
+            return ExtensionLoaderUtils.getConfig(file);
+        } catch (InvalidConfigurationException exception) {
+            throw new InvalidExtensionException(exception);
+        }
     }
 }
