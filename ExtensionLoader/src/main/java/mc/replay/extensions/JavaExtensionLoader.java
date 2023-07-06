@@ -35,6 +35,14 @@ public class JavaExtensionLoader implements ExtensionLoaderMethods {
         return new TreeSet<>(this.loaders.values().stream().map(JavaExtensionClassLoader::getExtension).toList());
     }
 
+    public final @NotNull Map<String, JavaExtensionClassLoader> getLoadersByName() {
+        return new HashMap<>(this.loaders);
+    }
+
+    public @NotNull Collection<JavaExtensionClassLoader> getLoaders() {
+        return new HashSet<>(this.loaders.values());
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     @Nullable
