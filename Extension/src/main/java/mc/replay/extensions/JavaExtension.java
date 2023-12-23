@@ -34,6 +34,12 @@ public abstract class JavaExtension implements Comparable<JavaExtension> {
         return this.mainFolder;
     }
 
+    public final @Nullable File getExternalConfig(String configName) throws Exception {
+        File file = new File(this.getDirectory(), configName);
+        if (file.exists()) file.createNewFile();
+        return file;
+    }
+
     public final @NotNull Collection<JavaExtension> getExtensions() {
         return this.extensionLoaderMethods.getExtensions();
     }
@@ -44,7 +50,7 @@ public abstract class JavaExtension implements Comparable<JavaExtension> {
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
     public final @NotNull File getDirectory() {
-        File folder = new File(this.mainFolder, this.config.getName().replaceAll(" ", "-"));
+        File folder = new File(this.mainFolder, this.config.getName().replace(" ", "-"));
 
         if (!folder.isDirectory() || !folder.exists()) {
             folder.mkdirs();
